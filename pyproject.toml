@@ -16,4 +16,5 @@ dependencies = [
 dev = [
     "ipykernel>=7.4.0",
     "jupyter>=1.1.1",
+    "pip>=26.3",
 ]
