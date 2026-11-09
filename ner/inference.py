@@ -57,12 +57,25 @@ def predict_entities(
     text: str,
     labels: list[str],
     threshold: float = 0.5,
+    label_descriptions: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Run GLiNER over a full document, chunk by chunk, with positions in the full text."""
+    """Run GLiNER over a full document, chunk by chunk, with positions in the full text.
+
+    label_descriptions: optional {LABEL: "natural language description"}.
+    The model receives the descriptions and we map them back to the original LABEL.
+    """
+    # Labels sent to the model (descriptions if provided) and the way back to our labels
+    if label_descriptions:
+        model_labels = [label_descriptions.get(lbl, lbl) for lbl in labels]
+        to_label = {label_descriptions.get(lbl, lbl): lbl for lbl in labels}
+    else:
+        model_labels = list(labels)
+        to_label = {lbl: lbl for lbl in labels}
+
     entities: list[dict[str, Any]] = []
 
     for offset, chunk in split_into_chunks(text):
-        for ent in model.predict_entities(chunk, labels, threshold=threshold):
+        for ent in model.predict_entities(chunk, model_labels, threshold=threshold):
             # Move the positions from the chunk to the full document
             start = offset + ent["start"]
             end = offset + ent["end"]
@@ -70,7 +83,7 @@ def predict_entities(
                 "start": start,
                 "end": end,
                 "text": text[start:end],
-                "label": ent["label"],
+                "label": to_label.get(ent["label"], ent["label"]),   # description -> LABEL
                 "score": float(ent["score"]),
             })
 
@@ -83,6 +96,7 @@ def predict_dataset(
     samples: list[dict[str, Any]],
     labels: list[str],
     threshold: float = 0.5,
+    label_descriptions: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Predict every document and keep the same id / text / language as the input."""
     from tqdm.auto import tqdm   # progress bar
@@ -92,7 +106,9 @@ def predict_dataset(
         responses.append({
             "id": sample.get("id"),
             "text": sample["text"],
-            "entities": predict_entities(model, sample["text"], labels, threshold),
+            "entities": predict_entities(
+                model, sample["text"], labels, threshold, label_descriptions
+            ),
             "language": sample.get("language"),
         })
     return responses
