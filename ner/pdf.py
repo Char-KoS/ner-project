@@ -5,14 +5,18 @@ import re
 from pathlib import Path
 from typing import Any
 
+import os
+
 import pymupdf
 
-# Folder with the Tesseract language files (spa.traineddata), inside the project
-TESSDATA_DIR = Path(__file__).resolve().parent.parent / "tessdata"
+
+TESSDATA_DIR = Path(os.environ.get(
+    "TESSDATA_PREFIX",
+    Path(__file__).resolve().parent.parent / "tessdata",
+))
 
 
 def find_pdf(pdf_dir: str | Path, doc_id: str) -> Path | None:
-    """Find the PDF of a document: '<id>.pdf' or '<id>_scanned.pdf'."""
     pdf_dir = Path(pdf_dir)
     for name in (f"{doc_id}.pdf", f"{doc_id}_scanned.pdf"):
         if (pdf_dir / name).exists():
@@ -21,12 +25,10 @@ def find_pdf(pdf_dir: str | Path, doc_id: str) -> Path | None:
 
 
 def _page_text(page, mode: str, textpage=None) -> list[str]:
-    """Text of one page: the raw text, or one string per paragraph (blocks)."""
     if mode == "raw":
         return [page.get_text(textpage=textpage)]
 
     paragraphs = []
-    # Each block = (x0, y0, x1, y1, text, block_no, block_type); type 0 = text
     for block in page.get_text("blocks", textpage=textpage, sort=True):
         if block[6] == 0:
             paragraph = re.sub(r"\s+", " ", block[4]).strip()   # join the lines of the block
@@ -39,11 +41,10 @@ def extract_text_from_pdf(
     pdf_path: str | Path,
     mode: str = "blocks",
     ocr: bool = False,
-    language: str = "spa",
+    language: str = "spa+cat",
     dpi: int = 300,
 ) -> str:
     """Extract the text of a PDF.
-
     mode = "raw"    -> keeps the PDF line breaks as they are
     mode = "blocks" -> one block per paragraph: lines joined with spaces,
                        paragraphs separated by a blank line (\n\n)
@@ -76,7 +77,6 @@ def extract_pdf_dataset(
     for gold in tqdm(gold_samples, desc="PyMuPDF"):
         pdf_path = find_pdf(pdf_dir, gold["id"])
         if pdf_path is None:
-            # Stop at the first missing PDF so the ids stay aligned with the gold file
             print(f"No PDF for {gold['id']}: stopping at {len(samples)} documents.")
             break
         samples.append({
