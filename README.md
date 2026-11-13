@@ -11,9 +11,7 @@ plain text, clean PDFs and scanned PDFs (**PyMuPDF** + OCR), and comparing it wi
 ## 1.- Group Members
 - **Alexander Mansilla Arteaga** ([@Char-KoS](https://github.com/Char-KoS))
 
-**Work organization:**
-(2–4 lines in English. For example: how you split the tasks, that you worked in PyCharm with uv and
-Jupyter notebooks, that you used Git with one commit per step, how long it took…)
+
 
 ---
 
